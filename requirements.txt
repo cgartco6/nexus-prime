@@ -1,0 +1,11 @@
+openai
+anthropic
+crewai
+langchain
+langchain-experimental
+autogen
+docker
+flask
+requests
+python-dotenv
+pytest
