@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Prime - AI Project Orchestration</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3a0ca3;
+            --accent: #f72585;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --success: #4cc9f0;
+            --warning: #f9c74f;
+            --danger: #f94144;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fb;
+            color: var(--dark);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: var(--secondary);
+        }
+        
+        .btn-danger {
+            background-color: var(--danger);
+        }
+        
+        .btn-danger:hover {
+            background-color: #d90429;
+        }
+        
+        .project-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .project-card {
+            border-left: 4px solid var(--primary);
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: var(--success);
+            border-radius: 5px;
+            transition: width 0.3s;
+        }
+        
+        .task-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .task-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .task-item:last-child {
+            border-bottom: none;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-right: 8px;
+        }
+        
+        .status-pending {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .status-in_progress {
+            background-color: var(--warning);
+            color: var(--dark);
+        }
+        
+        .status-completed {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .status-failed {
+            background-color: var(--danger);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Nexus Prime</h1>
+            <p>AI-Powered Project Orchestration System</p>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="card">
+            <h2>Create New Project</h2>
+            <form id="projectForm">
+                <div style="margin-bottom: 15px;">
+                    <label for="projectCommand" style="display: block; margin-bottom: 5px; font-weight: bold;">Project Description:</label>
+                    <textarea id="projectCommand" rows="3" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" placeholder="Describe what you want to create..."></textarea>
+                </div>
+                <button type="submit" class="btn">Create Project</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>Existing Projects</h2>
+            <div id="projectsList" class="project-list">
+                <!-- Projects will be loaded here -->
+            </div>
+        </div>
+        
+        <div id="projectDetail" class="card" style="display: none;">
+            <h2>Project: <span id="projectName"></span></h2>
+            <div id="projectProgress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                </div>
+                <div id="progressText">0% Complete</div>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <button id="executeTaskBtn" class="btn">Execute Next Task</button>
+                <button id="refreshStatusBtn" class="btn" style="margin-left: 10px;">Refresh Status</button>
+                <button id="deleteProjectBtn" class="btn btn-danger" style="margin-left: 10px;">Delete Project</button>
+            </div>
+            
+            <h3>Tasks</h3>
+            <div id="taskList" class="task-list">
+                <!-- Tasks will be loaded here -->
+            </div>
+            
+            <h3>Artifacts</h3>
+            <div id="artifactsList">
+                <!-- Artifacts will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const projectForm = document.getElementById('projectForm');
+        const projectsList = document.getElementById('projectsList');
+        const projectDetail = document.getElementById('projectDetail');
+        const projectName = document.getElementById('projectName');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const executeTaskBtn = document.getElementById('executeTaskBtn');
+        const refreshStatusBtn = document.getElementById('refreshStatusBtn');
+        const deleteProjectBtn = document.getElementById('deleteProjectBtn');
+        const taskList = document.getElementById('taskList');
+        const artifactsList = document.getElementById('artifactsList');
+        
+        let currentProjectId = null;
+        
+        document.addEventListener('DOMContentLoaded', loadProjects);
+        
+        projectForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const command = document.getElementById('projectCommand').value;
+            
+            if (!command) {
+                alert('Please enter a project description');
+                return;
+            }
+            
+            const response = await fetch('/api/projects', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ command })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                loadProjects();
+                document.getElementById('projectCommand').value = '';
+                alert(`Project created with ID: ${data.project_id}`);
+            } else {
+                alert('Failed to create project');
+            }
+        });
+        
+        executeTaskBtn.addEventListener('click', async () => {
+            if (!currentProjectId) return;
+            
+            const response = await fetch(`/api/projects/${currentProjectId}`, {
+                method: 'PUT'
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Task execution result:', result);
+                loadProjectDetail(currentProjectId);
+            } else {
+                alert('Failed to execute task');
+            }
+        });
+        
+        refreshStatusBtn.addEventListener('click', () => {
+            if (currentProjectId) {
+                loadProjectDetail(currentProjectId);
+            }
+        });
+        
+        deleteProjectBtn.addEventListener('click', async () => {
+            if (!currentProjectId) return;
+            
+            if (confirm('Are you sure you want to delete this project?')) {
+                const response = await fetch(`/api/projects/${currentProjectId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    currentProjectId = null;
+                    projectDetail.style.display = 'none';
+                    loadProjects();
+                } else {
+                    alert('Failed to delete project');
+                }
+            }
+        });
+        
+        async function loadProjects() {
+            const response = await fetch('/api/projects');
+            if (response.ok) {
+                const projects = await response.json();
+                
+                if (projects.length === 0) {
+                    projectsList.innerHTML = '<p>No projects found. Create a new project to get started.</p>';
+                    return;
+                }
+                
+                projectsList.innerHTML = '';
+                projects.forEach(project => {
+                    const projectCard = document.createElement('div');
+                    projectCard.className = 'card project-card';
+                    projectCard.innerHTML = `
+                        <h3>${project.name}</h3>
+                        <p>ID: ${project.id}</p>
+                        <p>Last updated: ${new Date(project.last_updated).toLocaleString()}</p>
+                        <button onclick="loadProjectDetail('${project.id}')" class="btn">View Details</button>
+                    `;
+                    projectsList.appendChild(projectCard);
+                });
+            }
+        }
+        
+        async function loadProjectDetail(projectId) {
+            const response = await fetch(`/api/projects/${projectId}`);
+            if (response.ok) {
+                const status = await response.json();
+                
+                projectName.textContent = status.project_name;
+                progressFill.style.width = `${status.percentage}%`;
+                progressText.textContent = status.progress;
+                
+                const artifactsResponse = await fetch(`/api/projects/${projectId}/artifacts`);
+                if (artifactsResponse.ok) {
+                    const artifacts = await artifactsResponse.json();
+                    renderTasks(artifacts);
+                    renderArtifacts(artifacts);
+                }
+                
+                projectDetail.style.display = 'block';
+                currentProjectId = projectId;
+                
+                projectDetail.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        
+        function renderTasks(artifacts) {
+            taskList.innerHTML = '';
+            
+            for (const [taskId, taskData] of Object.entries(artifacts)) {
+                const taskItem = document.createElement('div');
+                taskItem.className = 'task-item';
+                
+                let status = 'pending';
+                if (taskData.error) {
+                    status = 'failed';
+                } else if (taskData.files || taskData.response) {
+                    status = 'completed';
+                }
+                
+                taskItem.innerHTML = `
+                    <span class="status-badge status-${status}">${status}</span>
+                    <strong>${taskId}</strong>: ${JSON.stringify(taskData).substring(0, 100)}...
+                `;
+                
+                taskList.appendChild(taskItem);
+            }
+        }
+        
+        function renderArtifacts(artifacts) {
+            artifactsList.innerHTML = '';
+            
+            for (const [taskId, taskData] of Object.entries(artifacts)) {
+                if (taskData.files) {
+                    taskData.files.forEach(file => {
+                        const fileItem = document.createElement('div');
+                        fileItem.innerHTML = `
+                            <a href="/workspace/${file}" target="_blank">${file}</a> (from ${taskId})
+                        `;
+                        artifactsList.appendChild(fileItem);
+                    });
+                }
+            }
+        }
+    </script>
+</body>
+</html>
